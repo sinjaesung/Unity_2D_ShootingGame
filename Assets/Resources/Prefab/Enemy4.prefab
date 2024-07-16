@@ -107,6 +107,13 @@ MonoBehaviour:
   maxHP: 9000
   currentHP: 0
   enemyPower: 108
+  projectilePrefab: {fileID: 0}
+  projectileSpawnPoint: {fileID: 0}
+  attacktarget: {fileID: 0}
+  attacking: 0
+  attackRange: 5
+  attackDistance: 10
+  attackRate: 1
 --- !u!70 &5100992582359626497
 CapsuleCollider2D:
   m_ObjectHideFlags: 0
@@ -157,7 +164,7 @@ Rigidbody2D:
   m_Mass: 1
   m_LinearDrag: 0
   m_AngularDrag: 0.05
-  m_GravityScale: 1
+  m_GravityScale: 0
   m_Material: {fileID: 0}
   m_IncludeLayers:
     serializedVersion: 2

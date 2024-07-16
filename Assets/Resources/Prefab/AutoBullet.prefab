@@ -15,7 +15,7 @@ GameObject:
   - component: {fileID: 6403058754265396364}
   m_Layer: 0
   m_Name: AutoBullet
-  m_TagString: Untagged
+  m_TagString: PlayerProjectile
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -102,7 +102,7 @@ MonoBehaviour:
   moveSpeed: 5
   dir: {x: 0, y: 1, z: 0}
   limitMax_y: 5
-  missileLaunch: {fileID: 8300000, guid: 2ba743a00b0ebdb489b1fa286c6c6a9d, type: 3}
+  Damage: 360
   explodePrefab: {fileID: 100002, guid: cafecd3fc3b761c45bb1553f35cf5c96, type: 3}
 --- !u!70 &271198265716478141
 CapsuleCollider2D:

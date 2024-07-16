@@ -8,7 +8,7 @@ public class Bullet : MonoBehaviour
     [SerializeField] private Vector3 dir = Vector3.up;
 
     [SerializeField] private float limitMax_y = 5;
-
+    [SerializeField] private float Damage=30f;
 
     [SerializeField] private GameObject explodePrefab;//bullet에 파티클을 단다.
 
@@ -35,10 +35,9 @@ public class Bullet : MonoBehaviour
     {
         if (collision.CompareTag("Enemy"))
         {
-            GameManager.Instance.SetScore(1);//점수증가
             Instantiate(explodePrefab, transform.position, Quaternion.identity);//폭발이펙트
             //StartCoroutine(collision.GetComponent<Enemy>().Dead());//Enemy Dead코루틴 실행
-            collision.GetComponent<Enemy>().Damage(30f);//탄환 데미지
+            collision.GetComponent<Enemy>().Damage(Damage);//탄환 데미지
 
             Destroy(this.gameObject);//Bullet자신오브젝트 삭제
         }

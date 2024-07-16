@@ -1,8 +1,11 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using TMPro;
+using Unity.VisualScripting;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
 public class GameManager : MonoBehaviour
@@ -12,7 +15,7 @@ public class GameManager : MonoBehaviour
     [Header("Player")]
     public GameObject player;
     [SerializeField] private float maxHP = 6000;
-    [SerializeField] private float currentHP;
+    [SerializeField] public float currentHP;
     private SpriteRenderer playerSpriteRenderer;
 
     [Header("EnemySpawner")]
@@ -26,11 +29,11 @@ public class GameManager : MonoBehaviour
     [SerializeField]
     int[] levelArray = new int[5]
     {
-        50,
-        100,
-        150,
-        200,
-        300
+        10,
+        10,
+        15,
+        10,
+        20
     }; //레벨당 몇 개체수씩 생성할지 여부
     [SerializeField]
     int[] levelPerTypeCount = new int[5]
@@ -45,9 +48,14 @@ public class GameManager : MonoBehaviour
     {
         get
         {
-            return levelPerTypeCount[level];//현재 레벨0,1,2,3,4,5,...에 따른 소환종류수
+            return levelPerTypeCount[level];//현재 레벨0,1,2,3,4,5,...에 따른 소환종류수      
         }
     }
+    public Dictionary<int, bool> levelPerClear = new Dictionary<int, bool>();
+    public int levelPerMonsterCount = 0;
+    public int LevelAmountCatchMonsterCount = 0;
+    public int killCount = 0;
+    //0+10*1+10*2+15*2+10*3+20*3 :레벨에 따라서 잡아야하는 누적된 Kills수가 달라지고,이 조건에 부합되야 다음레벨도달
 
     [Header("UI")]
     [SerializeField] private TMP_Text hpText;
@@ -76,6 +84,7 @@ public class GameManager : MonoBehaviour
     public float time = 0;//게임 플레이 시간
     public bool isTimeCheck = false;
 
+    public bool isGameEnd = false;
     // Start is called before the first frame update
     void Start()
     {
@@ -89,9 +98,16 @@ public class GameManager : MonoBehaviour
         if (player != null)
             playerSpriteRenderer = player.GetComponent<SpriteRenderer>();
 
-        levelArray = new int[5] { 50, 100, 150, 200, 300 };
+        levelArray = new int[5] { 10, 10, 15, 10, 20 };
 
         InitializeGame();
+    }
+    public int NowEnemyCount()
+    {
+        //현재 맵상의 몬스터 개체수
+        var enemyList = FindObjectsOfType<Enemy>();
+
+        return enemyList.Length;
     }
 
     //Update is called once per frame
@@ -101,6 +117,73 @@ public class GameManager : MonoBehaviour
         {
             time += Time.deltaTime;//게임시작 이래로 계속 누적더해진다, 초단위의 deltaTime지난정도
             UpdateTime();
+        }
+
+        if (level >= 4)
+        {
+           
+            // var enemyList = FindObjectsOfType<Enemy>();
+            Debug.Log("레벨이 5를 넘었고현재 맵상에 남아있는 적들이 0마리로 모두 제거시에만 게임종료!" + NowEnemyCount());
+            var enemyList = FindObjectsOfType<Enemy>();
+            for (int e = 0; e < enemyList.Length; e++)
+            {
+                Debug.Log(e + "| 현재 맵상의 모든 남아있는 적들:" + enemyList[e].transform.name);
+            }
+            if(NowEnemyCount() == 0 && isGameEnd==false)
+            {
+                Debug.Log("레벨5 넘겼고,맵상의 모든 적 제거시에 게임종료");
+                StopCoroutine(enemySpawner.SpawnEnemy());
+                StopAllCoroutines();//레벨이 5를 넘겼고, 모든 적 섬멸시(적이 0마리)
+                GameOver();
+            }
+        }
+    }
+    private IEnumerator LevelPerMonsterAdaptCount()
+    {
+        while (true)
+        {
+            LevelAmountCatchMonsterCount = 0;
+            for (int e = 0; e <= level; e++)
+            {
+                levelPerMonsterCount = levelArray[e] * levelPerTypeCount[e];
+                Debug.Log(e + $"Level Per MonsterCount:{levelPerMonsterCount}");
+                LevelAmountCatchMonsterCount += levelPerMonsterCount;
+                Debug.Log(e + $"Level Per LevelAmountCatchMonsterCount:{LevelAmountCatchMonsterCount}");
+            }
+            Debug.Log($"[[LevelPerMonsterAdaptCount]]현재 레벨{level}과 레벨에 따른 잡아야할 몬스터개체수:{LevelAmountCatchMonsterCount},누적Kills수:{killCount}");
+
+            if (killCount >= LevelAmountCatchMonsterCount && levelPerClear.ContainsKey(level) == false)
+            {
+                //레벨1클리어,레벨2도달(레벨2누적킬수도달&levelPerClear딕셔너리에2키clear여부가 아직 Add되지 않은상태
+                //Contains하지않고있는 상태인경우에만 Add연산,레벨업실행=>레벨3도달 스폰어블,소환코루틴재실행
+                //누적킬수>=레벨에 따른 누적catch수 도달조건&&레벨3 아직 미클리어(미 Add)인경우에만 관련 구문실행
+                //level3 이미 Added되어있는 경우 무시하고,아직 추가되어있지 않은경우에만 관련구문실행 ->레벨4도달
+                //level5:4index Level변수값 도달했고,맵상에 모든 적들 0인 상태인경우 Update백그라운드에서 GameOver처리.
+                levelPerClear.Add(level, true);
+                //레벨1>=a 조건부합시레벨업,레벨2>=b 조건부합시 레벨업
+                Debug.Log($"[[LevelPerMonsterAdaptCount]]현재 레벨{level},{killCount}/{LevelAmountCatchMonsterCount} 조건 부합시에 레벨업진행");
+                //몬스터 소환은 레벨별 AddEnemyList함수에서 개체수 도달완료시에 이미 종료상태
+                NextRoundMoveInvoke();
+            }
+            else if (killCount >= LevelAmountCatchMonsterCount &&  levelPerClear.ContainsKey(level) == true)
+            {
+                Debug.Log($"[[LevelPerMonsterAdaptCount]]현재 레벨{level} {levelPerClear[level]} 관련 데이터 이미 Added되어있는 상태로 해당레벨클리어관련 실행로직 이미 달성상태");
+            }
+
+            yield return new WaitForSeconds(0.4f);
+        }
+    }
+    public void NextRoundMoveInvoke()
+    {
+        if (level < 6)
+        {
+            Debug.Log("현재 레벨별 상황에 따른 몬스터개체수 모두 섬멸 후에 다음라운드로 진출");
+            enemyList.Clear();
+            SetLevel(level + 1);
+            isSpawnAble = true;
+            StartCoroutine(enemySpawner.SpawnEnemy());
+            UpdateLevel();
+
         }
     }
     #region UI
@@ -175,6 +258,7 @@ public class GameManager : MonoBehaviour
     {
         level = _level;//레벨값 지정.몬스터 다 잡아서(플레이어가 공격해서 잡은경우에만 최종삭제)
         //라운드 하나가 끝난경우에만 Level업
+        level = level >= 5 ? 4 : level;//최대값4
     }
 
     public float GetTime()
@@ -211,34 +295,33 @@ public class GameManager : MonoBehaviour
 
         if(enemyList.Count >= levelArray[level])
         {
-            Debug.Log("EnemeyList full maximum: 다음라운드로!!" + enemyList.Count + "," + levelArray[level]);
+            Debug.Log("EnemeyList full maximum: 소환멈추기!!" + enemyList.Count + "," + levelArray[level]);
             isSpawnAble = false;
-            // StopCoroutine(enemySpawner.SpawnEnemy());
-            Invoke("NextRoundMoveInvoke", 5f);
+            StopCoroutine(enemySpawner.SpawnEnemy());
         }
     }
     #endregion
-
-    public void NextRoundMoveInvoke()
-    {
-        Debug.Log("몬스터 모두 소환뒤에 5초 후에 다음라운드로 진출");
-        enemyList.Clear();
-        SetLevel(level + 1);
-        isSpawnAble = true;
-        UpdateLevel();
-    }
-
+   
     #region GameLogic
 
     public void GameReplay()
     {
-        InitializeGame();
-        GameStart();
+        Debug.Log("게임리플레이 호출");
+        //InitializeGame();
+        //GameStart();
+        SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
     }
     void InitializeGame()
     {
+        isGameEnd = false;
+        killCount = 0;
+        Debug.Log("InitializeGame 호출");
+        Time.timeScale = 1;
+
+        StopAllCoroutines();//게임 첫 초기화시에 모든 코루틴 종료 초기화.
         startBtn.onClick.RemoveListener(GameStart);
         startBtn.onClick.AddListener(GameStart);
+
         PlayBgm(bgms[0]);
         introCanvas.SetActive(true);//인트로화면열기
         mainCanvas.SetActive(false);//인게임화면닫기
@@ -255,6 +338,7 @@ public class GameManager : MonoBehaviour
         SetTime(0);
         SetLevel(0);
         isTimeCheck = false;
+        enemyList.Clear();
     }
     public void GameStart()
     {
@@ -267,14 +351,22 @@ public class GameManager : MonoBehaviour
         isTimeCheck = true;//타임체크
 
         isSpawnAble = true;
-        StartCoroutine(enemySpawner.SpawnEnemy());
+        StartCoroutine(enemySpawner.SpawnEnemy());//적군 소환 코루틴
+        StartCoroutine(LevelPerMonsterAdaptCount());//레벨별 클리어 여부 조회
 
         UpdateLevel();
     }
 
     public void GameOver()
     {
-        endBtn.onClick.AddListener(GameReplay);//게임 초기상태로
+        isGameEnd = true;
+        Debug.Log("GameOver호출");
+        StopAllCoroutines();//모든 코루틴 종료
+        enemyList.Clear();
+
+        Time.timeScale = 0;
+        endBtn.onClick.RemoveListener(GameReplay);
+        endBtn.onClick.AddListener(GameReplay);
         PlayBgm(bgms[2]);
         PlaySFX(sfxs[1]);//player dead
         resultCanvas.SetActive(true);
@@ -282,9 +374,9 @@ public class GameManager : MonoBehaviour
         player.SetActive(false);
         enemySpawner.gameObject.SetActive(false);
 
-        resultScoreText.text = GetScore().ToString();
-        resultLevelText.text = GetLeveL().ToString();
-        resultTimeText.text = GetTime().ToString();
+        resultScoreText.text = "Score : " + GetScore().ToString();
+        resultLevelText.text = "Level : "+(GetLeveL()+1).ToString();
+        resultTimeText.text = "Play Time : "+GetTime().ToString();
         isTimeCheck = false;
     }
 

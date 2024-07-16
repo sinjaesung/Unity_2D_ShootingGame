@@ -24,21 +24,23 @@ public class EnemySpawner : MonoBehaviour
         //생성가능한 상태인지?? 초기 앱 실행이후에 계속 조건만 맞다면 백그라운드 실행
         while (GameManager.Instance.isSpawnAble)
         {
-            Debug.Log("현재 레벨과 레벨PerTypeCount:" + GameManager.Instance.level + "," + GameManager.Instance.LevelPerTypeCount);
-            GameObject enemyGameObjectSample=null;
-            for(int l=0; l<GameManager.Instance.LevelPerTypeCount; l++)
+            if (GameManager.Instance.LevelPerTypeCount !=-1)
             {
-                var enemyGameObject = enemyList[l];
-                Debug.Log(l + "| 생성에너미 개체:" + enemyGameObject.transform.name);
-                float posX = Random.Range(limitMin_X, limitMax_X);
+                Debug.Log("현재 레벨과 레벨PerTypeCount:" + GameManager.Instance.level + "," + GameManager.Instance.LevelPerTypeCount);
+                GameObject enemyGameObjectSample = null;
+                for (int l = 0; l < GameManager.Instance.LevelPerTypeCount; l++)
+                {
+                    var enemyGameObject = enemyList[l];
+                    Debug.Log(l + "| 생성에너미 개체:" + enemyGameObject.transform.name);
+                    float posX = Random.Range(limitMin_X, limitMax_X);
 
-                Vector3 position = new Vector3(posX, posY, 0);
-                GameObject enemyObject = Instantiate(enemyGameObject, position, Quaternion.identity);
-                enemyGameObjectSample = enemyGameObject;
+                    Vector3 position = new Vector3(posX, posY, 0);
+                    GameObject enemyObject = Instantiate(enemyGameObject, position, Quaternion.identity);
+                    enemyGameObjectSample = enemyGameObject;
+                }
+                Debug.Log("추가할 enemyGameObjectSample:" + enemyGameObjectSample.transform.name);
+                GameManager.Instance.AddEnemyList(enemyGameObjectSample);//LevelPerTypeCount개수 여부 상관없이 항상 한종류씩 취급 추가
             }
-            Debug.Log("추가할 enemyGameObjectSample:" + enemyGameObjectSample.transform.name);
-            GameManager.Instance.AddEnemyList(enemyGameObjectSample);//LevelPerTypeCount개수 여부 상관없이 항상 한종류씩 취급 추가
-
             yield return new WaitForSeconds(spawnTime);//-2.85~2.85
         }
     }
